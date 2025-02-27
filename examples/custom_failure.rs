@@ -13,6 +13,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_mod_sysfail::prelude::*;
 use bevy_mod_sysfail::{Callsite, Level, LogLevelModifier};
@@ -21,7 +22,7 @@ use thiserror::Error;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(bevy_debug_text_overlay::OverlayPlugin { font_size: 23.0, ..default() })
+        // .add_plugins(bevy_debug_text_overlay::OverlayPlugin { font_size: 23.0, ..default() })
         .add_systems(Startup, setup)
         .add_systems(Update, (print_generic, print_specialized))
         .run();
@@ -51,33 +52,33 @@ impl<T: fmt::Display, Lvl: LogLevelModifier> Failure for ScreenLog<T, Lvl> {
     const LEVEL: Level = Lvl::LEVEL;
 
     fn handle_error(self, _: (), callsite: Option<&'static impl Callsite>) {
-        use bevy_debug_text_overlay::{InvocationSiteKey, COMMAND_CHANNELS};
+        // use bevy_debug_text_overlay::{InvocationSiteKey, COMMAND_CHANNELS};
         let metadata = callsite.unwrap().metadata();
-        let key = InvocationSiteKey {
-            file: metadata.file().unwrap(),
-            line: metadata.line().unwrap(),
-            column: 0,
+        // let key = InvocationSiteKey {
+        //     file: metadata.file().unwrap(),
+        //     line: metadata.line().unwrap(),
+        //     column: 0,
+        // };
+        let color: Color = match *metadata.level() {
+            Level::ERROR => css::RED.into(),
+            Level::WARN => css::ORANGE.into(),
+            Level::DEBUG => css::BLUE.into(),
+            Level::TRACE => css::PURPLE.into(),
+            _ => css::GREEN.into(),
         };
-        let color = match *metadata.level() {
-            Level::ERROR => Color::RED,
-            Level::WARN => Color::ORANGE,
-            Level::DEBUG => Color::BLUE,
-            Level::TRACE => Color::PURPLE,
-            _ => Color::GREEN,
-        };
-        COMMAND_CHANNELS.refresh_text(key, || format!("{}", self.0), 1., Some(color));
+        // COMMAND_CHANNELS.refresh_text(key, || format!("{}", self.0), 1., Some(color));
     }
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 }
 
 // Usage:
 #[sysfail(ScreenLog<CustomError, Warn>)]
 fn print_specialized(time: Res<Time>) {
-    let delta = time.delta_seconds_f64();
-    let current_time = time.elapsed_seconds_f64();
+    let delta = time.delta_secs_f64();
+    let current_time = time.elapsed_secs_f64();
     let at_interval = |t: f64| current_time % t < delta;
     if at_interval(6.) {
         let transform = Transform::from_translation(Vec3::splat(current_time as f32));
@@ -87,8 +88,8 @@ fn print_specialized(time: Res<Time>) {
 
 #[sysfail(ScreenLog<anyhow::Error>)]
 fn print_generic(time: Res<Time>) {
-    let delta = time.delta_seconds_f64();
-    let current_time = time.elapsed_seconds_f64();
+    let delta = time.delta_secs_f64();
+    let current_time = time.elapsed_secs_f64();
     let at_interval = |t: f64| current_time % t < delta;
     if at_interval(3.) {
         let _ = Err(CustomError::Zoob)?;
